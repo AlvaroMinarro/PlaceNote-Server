@@ -23,7 +23,17 @@ docker compose up -d
 
 PostgreSQL quedará disponible en `localhost` en el puerto configurado en `.env` (por defecto `5432`).
 
-### 2. Servidor HTTP
+### 2. Variables de entorno
+
+El servidor lee la configuración de PostgreSQL y JWT desde el entorno (o un `.env` cargado manualmente). Tras `cp infra/.env.example infra/.env`, puedes exportarlas desde la raíz del repo:
+
+```bash
+set -a && source infra/.env && set +a
+```
+
+Imprescindibles para producción: `JWT_SECRET` (cadena larga y aleatoria). Las variables `POSTGRES_*` deben coincidir con las del contenedor Docker.
+
+### 3. Servidor HTTP
 
 ```bash
 ./gradlew run
@@ -31,8 +41,17 @@ PostgreSQL quedará disponible en `localhost` en el puerto configurado en `.env`
 
 - Salud: `GET http://localhost:8080/health`
 - Metadatos API: `GET http://localhost:8080/api/v1`
+- Registro: `POST /api/v1/auth/register` · Login: `POST /api/v1/auth/login`
 
-Variable opcional: `PORT` (por defecto `8080`).
+Variables opcionales: `PORT` (por defecto `8080`), `JWT_ACCESS_TTL_SECONDS` (segundos de validez del token).
+
+### Tests
+
+Requiere **Docker** (Testcontainers). En la raíz del servidor:
+
+```bash
+./gradlew test
+```
 
 ## Compatibilidad con el cliente
 
