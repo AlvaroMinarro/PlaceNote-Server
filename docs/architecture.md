@@ -32,3 +32,5 @@ El servidor expone una API REST versionada (`/api/v1`) consumida por la app **Pl
 ## Despliegue
 
 Self-hosted: [infra/docker-compose.yml](../infra/docker-compose.yml) puede levantar **PostgreSQL**, la **API Ktor** (imagen construida con el `Dockerfile` del repositorio) y **Caddy** como proxy TLS frente al contenedor de la API. Variables y pasos están en el README (dominio, `JWT_SECRET`, copia de `Caddyfile.example`, etc.).
+
+Temas opcionales de seguridad y operación: [hardening-backlog.md](hardening-backlog.md).
