@@ -1,0 +1,788 @@
+openapi: 3.0.3
+info:
+  title: PlaceNote API
+  description: |
+    API REST para PlaceNote (reseñas gastronómicas self-hosted). Los identificadores
+    de negocio son UUID generados en el cliente (offline-first).
+  version: 0.1.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Desarrollo local
+  - url: https://{host}
+    description: Instancia self-hosted
+    variables:
+      host:
+        default: example.com
+
+tags:
+  - name: Health
+  - name: Meta
+  - name: Auth
+  - name: Users
+  - name: Friendships
+  - name: Reviews
+  - name: Ratings
+  - name: Sync
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Comprobación de salud del proceso
+      operationId: getHealth
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /api/v1:
+    get:
+      tags: [Meta]
+      summary: Información de la API
+      operationId: getApiInfo
+      responses:
+        "200":
+          description: Metadatos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiInfoResponse"
+
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Registro de usuario
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Usuario creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Conflicto (p. ej. email ya registrado)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Inicio de sesión
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Tokens emitidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/me:
+    get:
+      tags: [Users]
+      summary: Perfil del usuario autenticado
+      operationId: getMe
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Usuario
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags: [Users]
+      summary: Actualizar perfil
+      operationId: patchMe
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserPatch"
+      responses:
+        "200":
+          description: Usuario actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/friendships:
+    get:
+      tags: [Friendships]
+      summary: Listar amistades del usuario autenticado
+      operationId: listFriendships
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Lista paginada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendshipPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Friendships]
+      summary: Enviar solicitud de amistad
+      operationId: createFriendship
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FriendshipCreate"
+      responses:
+        "201":
+          description: Solicitud creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Friendship"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/friendships/{friendshipId}:
+    parameters:
+      - name: friendshipId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    patch:
+      tags: [Friendships]
+      summary: Aceptar o rechazar solicitud
+      operationId: patchFriendship
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FriendshipPatch"
+      responses:
+        "200":
+          description: Amistad actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Friendship"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/reviews:
+    get:
+      tags: [Reviews]
+      summary: Listar reseñas (visitas) visibles para el usuario
+      operationId: listReviews
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Lista paginada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Reviews]
+      summary: Crear reseña (visita)
+      operationId: createReview
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewCreate"
+      responses:
+        "201":
+          description: Creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/reviews/{reviewId}:
+    parameters:
+      - name: reviewId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    get:
+      tags: [Reviews]
+      summary: Obtener reseña por id
+      operationId: getReview
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Reseña
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Reviews]
+      summary: Sustituir reseña (idempotente con mismo UUID)
+      operationId: putReview
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Review"
+      responses:
+        "200":
+          description: Actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [Reviews]
+      summary: Eliminar reseña
+      operationId: deleteReview
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Eliminada
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/reviews/{reviewId}/ratings:
+    parameters:
+      - name: reviewId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    get:
+      tags: [Ratings]
+      summary: Listar puntuaciones de una visita
+      operationId: listRatings
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de puntuaciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Rating"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Ratings]
+      summary: Crear o actualizar la puntuación del usuario autenticado para la visita
+      operationId: putRating
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RatingUpsert"
+      responses:
+        "200":
+          description: Puntuación guardada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Rating"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/sync/push:
+    post:
+      tags: [Sync]
+      summary: Enviar lote de operaciones pendientes desde el dispositivo
+      operationId: syncPush
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyncPushRequest"
+      responses:
+        "200":
+          description: Resultado por operación
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncPushResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/sync/pull:
+    get:
+      tags: [Sync]
+      summary: Obtener cambios remotos desde un cursor
+      operationId: syncPull
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: since
+          in: query
+          description: Cursor opaco o timestamp ISO-8601 según implementación
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cambios y nuevo cursor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncPullResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    BadRequest:
+      description: Petición inválida
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    Unauthorized:
+      description: No autenticado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+      example: "550e8400-e29b-41d4-a716-446655440000"
+
+    HealthResponse:
+      type: object
+      required: [status, service]
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: placeNote-server
+
+    ApiInfoResponse:
+      type: object
+      required: [name, version, apiVersion, documentation]
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        apiVersion:
+          type: string
+        documentation:
+          type: string
+
+    User:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          $ref: "#/components/schemas/Uuid"
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+
+    UserPatch:
+      type: object
+      properties:
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+
+    RegisterRequest:
+      type: object
+      required: [email, password, name]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        name:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    AuthResponse:
+      type: object
+      required: [accessToken, tokenType]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+          nullable: true
+        tokenType:
+          type: string
+          example: Bearer
+        expiresIn:
+          type: integer
+          nullable: true
+
+    FriendshipState:
+      type: string
+      enum: [PENDING, ACCEPTED]
+
+    Friendship:
+      type: object
+      required: [id, userAId, userBId, state]
+      properties:
+        id:
+          $ref: "#/components/schemas/Uuid"
+        userAId:
+          $ref: "#/components/schemas/Uuid"
+        userBId:
+          $ref: "#/components/schemas/Uuid"
+        state:
+          $ref: "#/components/schemas/FriendshipState"
+
+    FriendshipCreate:
+      type: object
+      required: [targetUserId]
+      properties:
+        targetUserId:
+          $ref: "#/components/schemas/Uuid"
+
+    FriendshipPatch:
+      type: object
+      required: [state]
+      properties:
+        state:
+          $ref: "#/components/schemas/FriendshipState"
+
+    FriendshipPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Friendship"
+        nextCursor:
+          type: string
+          nullable: true
+
+    Review:
+      type: object
+      required:
+        - id
+        - nombreSitio
+        - latitud
+        - longitud
+        - fechaVisita
+        - creadorId
+      properties:
+        id:
+          $ref: "#/components/schemas/Uuid"
+        nombreSitio:
+          type: string
+        latitud:
+          type: number
+          format: double
+        longitud:
+          type: number
+          format: double
+        fotoUrl:
+          type: string
+          format: uri
+          nullable: true
+        ocrTextoCrudo:
+          type: string
+          nullable: true
+        precioTotal:
+          type: number
+          format: double
+          nullable: true
+        fechaVisita:
+          type: string
+          format: date-time
+        creadorId:
+          $ref: "#/components/schemas/Uuid"
+        modifiedAt:
+          type: string
+          format: date-time
+          description: Para resolución de conflictos en sync
+
+    ReviewCreate:
+      type: object
+      required:
+        - id
+        - nombreSitio
+        - latitud
+        - longitud
+        - fechaVisita
+      properties:
+        id:
+          $ref: "#/components/schemas/Uuid"
+        nombreSitio:
+          type: string
+        latitud:
+          type: number
+        longitud:
+          type: number
+        fotoUrl:
+          type: string
+          nullable: true
+        ocrTextoCrudo:
+          type: string
+          nullable: true
+        precioTotal:
+          type: number
+          nullable: true
+        fechaVisita:
+          type: string
+          format: date-time
+
+    ReviewPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Review"
+        nextCursor:
+          type: string
+          nullable: true
+
+    Rating:
+      type: object
+      required: [reviewId, userId, nota]
+      properties:
+        reviewId:
+          $ref: "#/components/schemas/Uuid"
+        userId:
+          $ref: "#/components/schemas/Uuid"
+        nota:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 10
+        comentarioPrivado:
+          type: string
+          nullable: true
+        modifiedAt:
+          type: string
+          format: date-time
+
+    RatingUpsert:
+      type: object
+      required: [nota]
+      properties:
+        nota:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 10
+        comentarioPrivado:
+          type: string
+          nullable: true
+
+    SyncEntity:
+      type: string
+      enum: [REVIEW, RATING, FRIENDSHIP]
+
+    SyncAction:
+      type: string
+      enum: [INSERT, UPDATE, DELETE]
+
+    SyncOperation:
+      type: object
+      required: [id, nombreEntidad, idEntidad, accion, clientTimestamp]
+      properties:
+        id:
+          $ref: "#/components/schemas/Uuid"
+        nombreEntidad:
+          $ref: "#/components/schemas/SyncEntity"
+        idEntidad:
+          $ref: "#/components/schemas/Uuid"
+        accion:
+          $ref: "#/components/schemas/SyncAction"
+        clientTimestamp:
+          type: string
+          format: date-time
+        payload:
+          description: Cuerpo acorde a nombreEntidad y acción
+          nullable: true
+
+    SyncPushRequest:
+      type: object
+      required: [operations]
+      properties:
+        operations:
+          type: array
+          items:
+            $ref: "#/components/schemas/SyncOperation"
+
+    SyncPushResult:
+      type: object
+      required: [operationId, status]
+      properties:
+        operationId:
+          $ref: "#/components/schemas/Uuid"
+        status:
+          type: string
+          enum: [APPLIED, CONFLICT, REJECTED]
+        serverEntity:
+          description: Estado en servidor si aplica
+          nullable: true
+
+    SyncPushResponse:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/SyncPushResult"
+
+    SyncPullResponse:
+      type: object
+      required: [changes, nextCursor]
+      properties:
+        changes:
+          type: array
+          items:
+            $ref: "#/components/schemas/SyncOperation"
+        nextCursor:
+          type: string
+
+    ProblemDetails:
+      type: object
+      description: Errores alineados a RFC 7807 (subset)
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
