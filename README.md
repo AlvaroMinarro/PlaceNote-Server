@@ -7,7 +7,7 @@ Cliente oficial: [PlaceNote-Client](https://github.com/AlvaroMinarro/PlaceNote-C
 ## Requisitos
 
 - JDK compatible con Kotlin 2 / Gradle 8 (recomendado JDK 17 u 21)
-- Docker (solo para PostgreSQL en desarrollo)
+- **Docker:** imprescindible si usas contenedores. Sirve para levantar **solo PostgreSQL** mientras desarrollas con `./gradlew run` en el host, o el **stack completo** (PostgreSQL + API Ktor + Caddy) descrito en [Despliegue en producción](#despliegue-en-producción-docker) y en [infra/docker-compose.yml](infra/docker-compose.yml).
 
 ## Desarrollo local
 
