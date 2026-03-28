@@ -17,8 +17,51 @@ services:
     networks:
       - placenote
 
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: placenote-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-placenote}
+      POSTGRES_USER: ${POSTGRES_USER:-placenote}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-placenote_dev_change_me}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8080"
+    networks:
+      - placenote
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: placenote-caddy
+    restart: unless-stopped
+    ports:
+      - "${CADDY_HTTP_PORT:-80}:80"
+      - "${CADDY_HTTPS_PORT:-443}:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./Caddyfile.example:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    networks:
+      - placenote
+
 volumes:
   placenote_pg_data:
+  caddy_data:
+  caddy_config:
 
 networks:
   placenote:

@@ -86,7 +86,7 @@ object SyncService {
     suspend fun pull(userId: UUID, since: String?): SyncPullResponse {
         val sinceTime = since?.let {
             runCatching { OffsetDateTime.parse(it) }.getOrElse {
-                throw ApiException(HttpStatusCode.BadRequest, "since inválido")
+                throw ApiException(HttpStatusCode.BadRequest, "last_sync o since inválido (ISO-8601)")
             }
         } ?: OffsetDateTime.of(1970, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
         val changes = mutableListOf<SyncOperationDto>()

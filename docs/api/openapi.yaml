@@ -4,6 +4,11 @@ info:
   description: |
     API REST para PlaceNote (reseñas gastronómicas self-hosted). Los identificadores
     de negocio son UUID generados en el cliente (offline-first).
+
+    **Contrato de respuestas:** salvo `GET /health`, las respuestas JSON usan envoltorio
+    de éxito `{"status":"success","data":<payload>}` o de error
+    `{"status":"error","message":<string>,"code":<int>}` (el `code` suele coincidir con el HTTP).
+    Los esquemas de esta especificación documentan el contenido de `data` (y metadatos de error).
   version: 0.1.0
   license:
     name: MIT
@@ -23,6 +28,7 @@ tags:
   - name: Meta
   - name: Auth
   - name: Users
+  - name: Friends
   - name: Friendships
   - name: Reviews
   - name: Ratings
@@ -53,7 +59,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApiInfoResponse"
+                $ref: "#/components/schemas/SuccessEnvelopeApiInfoResponse"
 
   /api/v1/auth/register:
     post:
@@ -72,7 +78,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthResponse"
+                $ref: "#/components/schemas/SuccessEnvelopeAuthResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
         "409":
@@ -80,7 +86,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ProblemDetails"
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /api/v1/auth/login:
     post:
@@ -99,14 +105,52 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthResponse"
+                $ref: "#/components/schemas/SuccessEnvelopeAuthResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/users/me:
+    get:
+      tags: [Users]
+      summary: Perfil del usuario autenticado
+      operationId: getUsersMe
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Usuario
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelopeUser"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags: [Users]
+      summary: Actualizar perfil
+      operationId: patchUsersMe
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserPatch"
+      responses:
+        "200":
+          description: Usuario actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelopeUser"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
   /api/v1/me:
     get:
+      deprecated: true
       tags: [Users]
-      summary: Perfil del usuario autenticado
+      summary: Perfil del usuario autenticado (deprecado; usar GET /api/v1/users/me)
       operationId: getMe
       security:
         - bearerAuth: []
@@ -116,12 +160,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/User"
+                $ref: "#/components/schemas/SuccessEnvelopeUser"
         "401":
           $ref: "#/components/responses/Unauthorized"
     patch:
+      deprecated: true
       tags: [Users]
-      summary: Actualizar perfil
+      summary: Actualizar perfil (deprecado; usar PATCH /api/v1/users/me)
       operationId: patchMe
       security:
         - bearerAuth: []
@@ -136,14 +181,83 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/User"
+                $ref: "#/components/schemas/SuccessEnvelopeUser"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /api/v1/friends:
+    get:
+      tags: [Friends]
+      summary: Listar amistades del usuario autenticado
+      operationId: listFriends
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Lista paginada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelopeFriendshipPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/friends/request:
+    post:
+      tags: [Friends]
+      summary: Enviar solicitud de amistad
+      operationId: createFriendRequest
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FriendRequestBody"
+      responses:
+        "201":
+          description: Solicitud creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelopeFriendship"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/friends/accept/{friendshipId}:
+    parameters:
+      - name: friendshipId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    put:
+      tags: [Friends]
+      summary: Aceptar solicitud de amistad
+      operationId: acceptFriendship
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Amistad actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelopeFriendship"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/friendships:
     get:
+      deprecated: true
       tags: [Friendships]
-      summary: Listar amistades del usuario autenticado
+      summary: Listar amistades (deprecado; usar GET /api/v1/friends)
       operationId: listFriendships
       security:
         - bearerAuth: []
@@ -156,12 +270,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FriendshipPage"
+                $ref: "#/components/schemas/SuccessEnvelopeFriendshipPage"
         "401":
           $ref: "#/components/responses/Unauthorized"
     post:
+      deprecated: true
       tags: [Friendships]
-      summary: Enviar solicitud de amistad
+      summary: Enviar solicitud de amistad (deprecado; usar POST /api/v1/friends/request)
       operationId: createFriendship
       security:
         - bearerAuth: []
@@ -177,7 +292,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Friendship"
+                $ref: "#/components/schemas/SuccessEnvelopeFriendship"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -189,8 +304,9 @@ paths:
         schema:
           $ref: "#/components/schemas/Uuid"
     patch:
+      deprecated: true
       tags: [Friendships]
-      summary: Aceptar o rechazar solicitud
+      summary: Aceptar o rechazar solicitud (deprecado; usar PUT /api/v1/friends/accept/{friendshipId} para aceptar)
       operationId: patchFriendship
       security:
         - bearerAuth: []
@@ -206,7 +322,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Friendship"
+                $ref: "#/components/schemas/SuccessEnvelopeFriendship"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -228,7 +344,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReviewPage"
+                $ref: "#/components/schemas/SuccessEnvelopeReviewPage"
         "401":
           $ref: "#/components/responses/Unauthorized"
     post:
@@ -249,7 +365,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Review"
+                $ref: "#/components/schemas/SuccessEnvelopeReview"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -272,7 +388,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Review"
+                $ref: "#/components/schemas/SuccessEnvelopeReview"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -295,7 +411,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Review"
+                $ref: "#/components/schemas/SuccessEnvelopeReview"
         "401":
           $ref: "#/components/responses/Unauthorized"
     delete:
@@ -305,8 +421,12 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        "204":
-          description: Eliminada
+        "200":
+          description: Eliminada (`data` indica borrado)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelopeDeleteSuccess"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -331,16 +451,38 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Rating"
+                $ref: "#/components/schemas/SuccessEnvelopeRatingList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Ratings]
+      summary: Crear o actualizar la puntuación del usuario autenticado para la visita (preferido)
+      operationId: postRating
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RatingUpsert"
+      responses:
+        "200":
+          description: Puntuación guardada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelopeRating"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
     put:
+      deprecated: true
       tags: [Ratings]
-      summary: Crear o actualizar la puntuación del usuario autenticado para la visita
+      summary: Crear o actualizar puntuación (deprecado; usar POST en la misma ruta)
       operationId: putRating
       security:
         - bearerAuth: []
@@ -356,7 +498,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Rating"
+                $ref: "#/components/schemas/SuccessEnvelopeRating"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -381,7 +523,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SyncPushResponse"
+                $ref: "#/components/schemas/SuccessEnvelopeSyncPushResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -393,9 +535,14 @@ paths:
       security:
         - bearerAuth: []
       parameters:
+        - name: last_sync
+          in: query
+          description: Cursor opaco o timestamp ISO-8601 (preferido)
+          schema:
+            type: string
         - name: since
           in: query
-          description: Cursor opaco o timestamp ISO-8601 según implementación
+          description: Alias de `last_sync` (compatibilidad)
           schema:
             type: string
       responses:
@@ -404,7 +551,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SyncPullResponse"
+                $ref: "#/components/schemas/SuccessEnvelopeSyncPullResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -436,25 +583,175 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ProblemDetails"
+            $ref: "#/components/schemas/ErrorEnvelope"
     Unauthorized:
       description: No autenticado
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ProblemDetails"
+            $ref: "#/components/schemas/ErrorEnvelope"
     NotFound:
       description: Recurso no encontrado
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ProblemDetails"
+            $ref: "#/components/schemas/ErrorEnvelope"
 
   schemas:
     Uuid:
       type: string
       format: uuid
       example: "550e8400-e29b-41d4-a716-446655440000"
+
+    ErrorEnvelope:
+      type: object
+      required: [status, message, code]
+      properties:
+        status:
+          type: string
+          enum: [error]
+        message:
+          type: string
+        code:
+          type: integer
+          description: Suele coincidir con el código HTTP de la respuesta
+
+    SuccessEnvelopeApiInfoResponse:
+      type: object
+      required: [status, data]
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          $ref: "#/components/schemas/ApiInfoResponse"
+
+    SuccessEnvelopeAuthResponse:
+      type: object
+      required: [status, data]
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          $ref: "#/components/schemas/AuthResponse"
+
+    SuccessEnvelopeUser:
+      type: object
+      required: [status, data]
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          $ref: "#/components/schemas/User"
+
+    SuccessEnvelopeFriendshipPage:
+      type: object
+      required: [status, data]
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          $ref: "#/components/schemas/FriendshipPage"
+
+    SuccessEnvelopeFriendship:
+      type: object
+      required: [status, data]
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          $ref: "#/components/schemas/Friendship"
+
+    SuccessEnvelopeReviewPage:
+      type: object
+      required: [status, data]
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          $ref: "#/components/schemas/ReviewPage"
+
+    SuccessEnvelopeReview:
+      type: object
+      required: [status, data]
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          $ref: "#/components/schemas/Review"
+
+    SuccessEnvelopeDeleteSuccess:
+      type: object
+      required: [status, data]
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          $ref: "#/components/schemas/DeleteSuccess"
+
+    SuccessEnvelopeRatingList:
+      type: object
+      required: [status, data]
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Rating"
+
+    SuccessEnvelopeRating:
+      type: object
+      required: [status, data]
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          $ref: "#/components/schemas/Rating"
+
+    SuccessEnvelopeSyncPushResponse:
+      type: object
+      required: [status, data]
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          $ref: "#/components/schemas/SyncPushResponse"
+
+    SuccessEnvelopeSyncPullResponse:
+      type: object
+      required: [status, data]
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          $ref: "#/components/schemas/SyncPullResponse"
+
+    FriendRequestBody:
+      type: object
+      required: [user_id]
+      properties:
+        user_id:
+          $ref: "#/components/schemas/Uuid"
+
+    DeleteSuccess:
+      type: object
+      required: [deleted]
+      properties:
+        deleted:
+          type: boolean
+          example: true
 
     HealthResponse:
       type: object
@@ -773,7 +1070,10 @@ components:
 
     ProblemDetails:
       type: object
-      description: Errores alineados a RFC 7807 (subset)
+      description: |
+        Legado; el servidor devuelve `ErrorEnvelope` para errores de API.
+        Se mantiene el esquema solo como referencia histórica.
+      deprecated: true
       properties:
         type:
           type: string

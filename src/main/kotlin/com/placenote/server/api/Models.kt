@@ -1,5 +1,6 @@
 package com.placenote.server.api
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
@@ -68,6 +69,17 @@ data class FriendshipDto(
 @Serializable
 data class FriendshipCreate(
     val targetUserId: String,
+)
+
+/** Body para `POST /api/v1/friends/request` (`user_id` en JSON). */
+@Serializable
+data class FriendRequestBody(
+    @SerialName("user_id") val userId: String,
+)
+
+@Serializable
+data class DeleteSuccess(
+    val deleted: Boolean = true,
 )
 
 @Serializable

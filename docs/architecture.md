@@ -4,6 +4,11 @@
 
 El servidor expone una API REST versionada (`/api/v1`) consumida por la app **PlaceNote-Client** (repositorio aparte). La fuente de verdad del contrato HTTP es [api/openapi.yaml](api/openapi.yaml).
 
+### Respuestas HTTP
+
+- `GET /health` devuelve JSON directo (`status`, `service`).
+- El resto de rutas bajo `/api/v1/**` devuelven un envoltorio de éxito `{"status":"success","data":...}` o de error `{"status":"error","message","code"}` (ver esquemas `SuccessEnvelope*` y `ErrorEnvelope` en OpenAPI).
+
 ## Datos
 
 - **PostgreSQL** como base de datos principal (desarrollo local vía [infra/docker-compose.yml](../infra/docker-compose.yml)).
@@ -17,7 +22,7 @@ El servidor expone una API REST versionada (`/api/v1`) consumida por la app **Pl
 ## Sincronización
 
 - `POST /api/v1/sync/push` procesa operaciones por entidad (`REVIEW`, `RATING`, `FRIENDSHIP`) y acción (`INSERT`, `UPDATE`, `DELETE`).
-- `GET /api/v1/sync/pull` devuelve reseñas visibles modificadas desde el cursor `since` (ISO-8601).
+- `GET /api/v1/sync/pull` devuelve cambios desde el cursor `last_sync` (o el alias `since`) en ISO-8601.
 
 ## Seguridad
 
@@ -26,4 +31,4 @@ El servidor expone una API REST versionada (`/api/v1`) consumida por la app **Pl
 
 ## Despliegue
 
-Self-hosted: Docker Compose puede ampliarse con un servicio de la aplicación Ktor además de PostgreSQL; el README describe el estado actual.
+Self-hosted: [infra/docker-compose.yml](../infra/docker-compose.yml) puede levantar **PostgreSQL**, la **API Ktor** (imagen construida con el `Dockerfile` del repositorio) y **Caddy** como proxy TLS frente al contenedor de la API. Variables y pasos están en el README (dominio, `JWT_SECRET`, copia de `Caddyfile.example`, etc.).

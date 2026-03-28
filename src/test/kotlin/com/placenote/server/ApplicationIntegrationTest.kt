@@ -75,11 +75,16 @@ class ApplicationIntegrationTest {
             setBody("""{"email":"a@b.co","password":"password12","name":"Test"}""")
         }
         assertEquals(HttpStatusCode.Created, reg.status)
+        val regBody = reg.bodyAsText()
+        assertTrue(regBody.contains("\"status\":\"success\""))
+        assertTrue(regBody.contains("accessToken"))
         val login = client.post("/api/v1/auth/login") {
             contentType(ContentType.Application.Json)
             setBody("""{"email":"a@b.co","password":"password12"}""")
         }
         assertEquals(HttpStatusCode.OK, login.status)
-        assertTrue(login.bodyAsText().contains("accessToken"))
+        val loginBody = login.bodyAsText()
+        assertTrue(loginBody.contains("\"status\":\"success\""))
+        assertTrue(loginBody.contains("accessToken"))
     }
 }

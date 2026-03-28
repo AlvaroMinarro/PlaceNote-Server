@@ -18,10 +18,10 @@ Desde la raíz de este repositorio:
 ```bash
 cd infra
 cp .env.example .env
-docker compose up -d
+docker compose up -d postgres
 ```
 
-PostgreSQL quedará disponible en `localhost` en el puerto configurado en `.env` (por defecto `5432`).
+PostgreSQL quedará disponible en `localhost` en el puerto configurado en `.env` (por defecto `5432`). Para levantar solo la base, usa el servicio `postgres` como arriba; el compose completo también define la API y Caddy (véase más abajo).
 
 ### 2. Variables de entorno
 
@@ -52,6 +52,21 @@ Requiere **Docker** (Testcontainers). En la raíz del servidor:
 ```bash
 ./gradlew test
 ```
+
+## Despliegue en producción (Docker)
+
+Stack recomendado: **PostgreSQL** + **API Ktor** (imagen construida con el `Dockerfile` de este repo) + **Caddy** como proxy TLS. Requisitos habituales: un VPS con Docker, DNS del dominio apuntando al servidor, puertos 80/443 abiertos para Let’s Encrypt (si usas HTTPS automático).
+
+1. Copia `infra/.env.example` a `infra/.env` y define al menos `JWT_SECRET`, credenciales de PostgreSQL y, para HTTPS con Caddy hacia un dominio real, `DOMAIN` y `ACME_EMAIL`.
+2. Revisa `infra/Caddyfile.example`: para desarrollo local suele bastar el bloque por defecto (`tls internal`). En producción, sigue los comentarios del archivo para usar el bloque con `tls` y correo ACME, o sustituye por un proxy que ya gestione TLS.
+3. Desde `infra/`:
+
+   ```bash
+   docker compose build api
+   docker compose up -d
+   ```
+
+La API escucha en el puerto 8080 **dentro de la red Docker**; Caddy publica 80/443 según `CADDY_HTTP_PORT` / `CADDY_HTTPS_PORT` en `.env`. Documentación del servidor web: [Caddy](https://caddyserver.com/docs/).
 
 ## Compatibilidad con el cliente
 

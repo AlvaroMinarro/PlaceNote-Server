@@ -1,0 +1,20 @@
+# Copia o renombra a `Caddyfile` junto a docker-compose y ajusta variables en `.env`.
+# Caddy sustituye {$VAR} con el entorno del contenedor (ver docker-compose).
+
+# Desarrollo local (TLS autofirmado para el host indicado en DOMAIN):
+{$DOMAIN:localhost} {
+	tls internal
+	reverse_proxy api:8080
+}
+
+# Producción con Let's Encrypt: usa un dominio público, puertos 80/443 accesibles,
+# y descomenta el bloque siguiente comentando el anterior. Define ACME_EMAIL en `.env`.
+# {$DOMAIN} {
+# 	tls {$ACME_EMAIL}
+# 	reverse_proxy api:8080
+# }
+
+# Alternativa solo HTTP (sin TLS) para pruebas rápidas en LAN:
+# :80 {
+# 	reverse_proxy api:8080
+# }
